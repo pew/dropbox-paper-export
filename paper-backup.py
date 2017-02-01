@@ -42,7 +42,12 @@ listHeaders = {'Authorization': 'Bearer '+apikey,
                 'Content-Type': 'application/json'}
 listData = {'limit': 100}
 listReq = requests.post(listUrl, headers=listHeaders, json=listData)
-docs = json.loads(listReq.text)
+
+if listReq.status_code == 200:
+    docs = json.loads(listReq.text)
+else:
+    sys.exit('error %s' % (listReq.status_code))
+
 cursor = {'cursor': docs['cursor']['value']}
 
 docList = docs['doc_ids']
@@ -52,9 +57,12 @@ if docs['has_more'] == True:
     while cursorTrue:
         if docs['has_more'] == True:
             listReq = requests.post(listCont, headers=listHeaders, json=cursor)
-            docs = json.loads(listReq.text)
-            cursor = {'cursor': docs['cursor']['value']}
-            docList.extend(docs['doc_ids'])
+            if listReq.status_code == 200:
+                docs = json.loads(listReq.text)
+                cursor = {'cursor': docs['cursor']['value']}
+                docList.extend(docs['doc_ids'])
+            else:
+                sys.exit('error %s' % (listReq.status_code))
         else:
             cursorTrue = False
 else:
@@ -66,7 +74,12 @@ folderUrl = 'https://api.dropboxapi.com/2/paper/docs/get_folder_info'
 for doc in docList:
     folderData = {'doc_id': doc}
     folderReq = requests.post(folderUrl, headers=listHeaders, json = folderData)
-    folderInfo = json.loads(folderReq.text)
+
+    if folderReq.status_code == 200:
+        folderInfo = json.loads(folderReq.text)
+    else:
+        sys.exit('error %s' % (listReq.status_code))
+
     if folderInfo:
         if len(folderInfo['folders']) > 1:
             tree = []
@@ -74,7 +87,7 @@ for doc in docList:
                 tree.append(folder['name'])
             folderList.append({'docid': doc, 'folderName': '/'.join(tree)})
         else:
-            pass
+            folderList.append({'docid': doc, 'folderName': folderInfo['folders'][0]['name']})
     else:
         folderList.append({'docid': doc, 'folderName': 'root'})
 
@@ -89,7 +102,12 @@ for f in folderList:
     headers = {'Authorization': 'Bearer '+apikey,
         'Dropbox-API-Arg': json.dumps({'doc_id': f['docid'], 'export_format': 'markdown'})}
     req = requests.post(url, headers=headers)
-    getTitle = json.loads(req.headers['Dropbox-Api-Result'])
+
+    if req.status_code == 200:
+        getTitle = json.loads(req.headers['Dropbox-Api-Result'])
+    else:
+        sys.exit('error %s' % (listReq.status_code))
+
     filename = getTitle['title']+'.md'
     foldername = f['folderName']
     try:
